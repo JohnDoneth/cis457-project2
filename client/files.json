@@ -1,0 +1,8 @@
+{
+    "files": [
+        {
+            "filename": "files/hello.txt",
+            "description": "Has hello world in it"
+        }
+    ]
+}

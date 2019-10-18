@@ -1,0 +1,10 @@
+{
+    "files": [
+        {
+            "remote": "127.0.0.1",
+            "port": 5034,
+            "filename": "meme.png",
+            "bandwidth": "ethernet"
+        }
+    ]
+}
