@@ -14,9 +14,7 @@ from asyncio import StreamReader, StreamWriter
 
 from typing import Dict
 
-VALID_METHODS = [
-    "CONNECT"
-]
+VALID_METHODS = ["CONNECT"]
 
 
 class Client:
@@ -39,6 +37,9 @@ class Server:
     def __init__(self):
         pass
 
+    def run(self):
+        asyncio.run(self.serve())
+
     async def handle_request(self, method: str, request, reader, writer):
 
         if method == "CONNECT":
@@ -50,11 +51,15 @@ class Server:
             print("Accepted new client")
             self.clients.append(Client(username, hostname, speed, files))
 
+            await common.send_json(writer,
+                {"success": "connection successful"}
+            )
+
         else:
             # invalid method
-            await common.send_json({
-                "error", f"invalid method {method}, expected one of {VALID_METHODS}"
-            })
+            await common.send_json(writer,
+                {"error": f"invalid method {method}, expected one of {VALID_METHODS}"}
+            )
 
     async def serve(self):
         server = await asyncio.start_server(self.handle_connect, "127.0.0.1", 12345)
@@ -95,15 +100,6 @@ def filter_files(path):
         return True
 
 
-# thread function
-def threaded(client):
-    while True:
-
-        handle_request(request["method"].upper(), request)
-
-    client.close()
-
-
 async def handle_echo(reader, writer):
     data = await reader.read(100)
     message = data.decode()
@@ -122,7 +118,7 @@ async def handle_echo(reader, writer):
 if __name__ == "__main__":
 
     try:
-        asyncio.run(main())
+        Server().run()
     except KeyboardInterrupt:
         print()
         pass
