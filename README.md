@@ -13,11 +13,15 @@ pip install -r requirements.txt
 Running the client
 
 ```
-python ./src/client.py
+cd testing/client1
+chmod +x run
+./run
 ```
 
 Running the server
 
 ```
-python ./src/server.py
+cd testing/server
+chmod +x run
+./run
 ```

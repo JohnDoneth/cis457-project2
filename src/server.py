@@ -33,6 +33,7 @@ class Client:
 class Server:
 
     clients: [] = []
+    files: [] = []
 
     def __init__(self):
         pass
@@ -40,7 +41,9 @@ class Server:
     def run(self):
         asyncio.run(self.serve())
 
-    async def handle_request(self, method: str, request, reader, writer):
+    async def handle_request(
+        self, method: str, request, reader: StreamReader, writer: StreamWriter
+    ):
 
         if method == "CONNECT":
             username = request["username"]
@@ -51,14 +54,16 @@ class Server:
             print("Accepted new client")
             self.clients.append(Client(username, hostname, speed, files))
 
-            await common.send_json(writer,
-                {"success": "connection successful"}
-            )
+            await common.send_json(writer, {"success": "connection successful"})
+
+        if method == "LIST":
+            await common.send_json(writer, self.clients)
 
         else:
             # invalid method
-            await common.send_json(writer,
-                {"error": f"invalid method {method}, expected one of {VALID_METHODS}"}
+            await common.send_json(
+                writer,
+                {"error": f"invalid method {method}, expected one of {VALID_METHODS}"},
             )
 
     async def serve(self):
@@ -70,14 +75,15 @@ class Server:
         async with server:
             await server.serve_forever()
 
-    async def handle_connect(self, reader, writer):
+    async def handle_connect(self, reader: StreamReader, writer: StreamWriter):
         # self.clients.append(Client(reader, writer))
 
         while True:
             request = await common.recv_json(reader)
 
-            # if request is None:
-            #    print("a client has disconnected")
+            if request is None:
+                print("a client has disconnected")
+                break
 
             print("-> Received Request:")
             print(json.dumps(request, indent=4, sort_keys=True))
@@ -85,7 +91,7 @@ class Server:
             if not request["method"]:
                 print("Invalid Request: missing method field.")
                 await common.send_json(
-                    {"error": "invalid request: missing method field"}
+                    writer, {"error": "invalid request: missing method field"}
                 )
             else:
                 await self.handle_request(request["method"], request, reader, writer)
@@ -98,21 +104,6 @@ def filter_files(path):
         return False
     else:
         return True
-
-
-async def handle_echo(reader, writer):
-    data = await reader.read(100)
-    message = data.decode()
-    addr = writer.get_extra_info("peername")
-
-    print(f"Received {message!r} from {addr!r}")
-
-    print(f"Send: {message!r}")
-    writer.write(data)
-    await writer.drain()
-
-    print("Close the connection")
-    writer.close()
 
 
 if __name__ == "__main__":
