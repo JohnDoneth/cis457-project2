@@ -8,7 +8,7 @@ import argparse
 import os
 import base64
 
-from common import ConnectionSpeed
+from common import ConnectionSpeed, Event
 from asyncio import StreamReader, StreamWriter
 from typing import Dict
 
@@ -98,21 +98,46 @@ def parse_args():
     return parser.parse_args()
 
 
-async def main():
+async def main(pipe):
     args = parse_args()
 
     server_task = asyncio.create_task(spawn_file_server(args.port))
 
     reader, writer = await connect("127.0.0.1", 12345, local_port=args.port)
 
-    gui = ClientGUI()
+    # gui = ClientGUI()
+
+    # asyncio.get_running_loop().run_forever()
+
+    while True:
+        if pipe.poll():
+            event = pipe.recv()
+            print(event)
+
+            if event == Event.QUIT:
+                break
+        else:
+            await asyncio.sleep(0.1)
+
+
+from multiprocessing import Process, Pipe
+
+
+def f(conn):
+    # conn.send([42, None, 'hello'])
+    # conn.close()
+    client = ClientGUI(conn)
 
 
 if __name__ == "__main__":
-    import asyncio, gbulb
 
-    gbulb.install(gtk=True)
+    parent_conn, child_conn = Pipe()
+    p = Process(target=f, args=(child_conn,))
+    p.start()
+    # print(parent_conn.recv())  # prints "[42, None, 'hello']"
+    # p.join()
+
     # asyncio.get_event_loop().run_forever()
-    asyncio.run(main())
+    asyncio.run(main(parent_conn))
 
     # client = ClientGUI()

@@ -25,6 +25,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <signal name="pressed" handler="onButtonCancel" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -33,11 +34,12 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton">
+              <object class="GtkButton" id="mybutton">
                 <property name="label" translatable="yes">Connect</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <signal name="pressed" handler="on_connect_connect" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -77,7 +79,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkEntry">
+                  <object class="GtkEntry" id="server_ip">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                   </object>
@@ -113,7 +115,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkEntry">
+                  <object class="GtkEntry" id="server_port">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                   </object>
@@ -149,7 +151,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkEntry">
+                  <object class="GtkEntry" id="username">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                   </object>
@@ -185,9 +187,10 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkComboBox">
+                  <object class="GtkComboBox" id="connection_speed">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="active">0</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>

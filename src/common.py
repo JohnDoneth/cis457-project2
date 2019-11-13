@@ -12,6 +12,10 @@ from asyncio.streams import IncompleteReadError
 from enum import Enum
 
 
+class Event(Enum):
+    QUIT = "QUIT"
+
+
 class ConnectionSpeed(str, Enum):
     DIAL_UP = "dial-up"
     DSL = "dsl"

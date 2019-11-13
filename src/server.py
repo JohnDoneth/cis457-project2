@@ -10,6 +10,7 @@ import threading
 import common
 import asyncio
 
+from common import Event
 from asyncio import StreamReader, StreamWriter
 
 from typing import Dict
