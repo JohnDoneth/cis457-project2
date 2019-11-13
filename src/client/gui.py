@@ -10,6 +10,8 @@ class ClientGUI:
     window = None
 
     def __init__(self):
+        
+
         builder = Gtk.Builder()
         builder.add_from_file("resources/gui.glade")
         builder.connect_signals(self)
@@ -20,8 +22,8 @@ class ClientGUI:
         # self.window = builder.get_object("main_window")
         # self.window.show_all()
 
-        # self.window.connect("destroy", Gtk.main_quit)
-        self.connect_dialog.connect("connect", self.open_connect_dialog)
+        self.connect_dialog.connect("destroy", Gtk.main_quit)
+        # self.connect_dialog.connect("connect", self.open_connect_dialog)
 
         Gtk.main()
 

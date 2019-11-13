@@ -8,6 +8,16 @@ import threading
 from asyncio import StreamWriter, StreamReader
 from asyncio.streams import IncompleteReadError
 
+
+from enum import Enum
+
+
+class ConnectionSpeed(str, Enum):
+    DIAL_UP = "dial-up"
+    DSL = "dsl"
+    GIGABIT = "gigabit"
+
+
 # https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
 def sizeof_fmt(num, suffix="B"):
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
