@@ -1,4 +1,4 @@
 {
     "python.formatting.provider": "black",
-    "python.pythonPath": "/sbin/python"
+    "python.pythonPath": "/home/john/projects/cis457-project2/venv/bin/python3.7"
 }

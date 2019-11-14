@@ -11,7 +11,7 @@ import time
 from common import ConnectionSpeed, Event
 from asyncio import StreamReader, StreamWriter
 from typing import Dict
-from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
+from wxasync import AsyncBind, WxAsyncApp, StartCoroutine, AsyncShowDialog
 from asyncio.events import get_event_loop
 
 
@@ -100,37 +100,98 @@ def parse_args():
     return parser.parse_args()
 
 
+class ConnectionDialog(wx.Dialog):
+
+    server_address = None
+    server_port = None
+    connection_speed = None
+
+    def IsModal(self):
+        return True
+
+    def __init__(self, parent=None):
+        super(ConnectionDialog, self).__init__(parent)
+        self.SetTitle("Connect")
+
+        flagsExpand = wx.SizerFlags(1)
+        flagsExpand.Expand().Border(wx.ALL, 10)
+
+        self.server_address = wx.TextCtrl(self, style=wx.TE_LEFT)
+        self.server_port = wx.TextCtrl(self, style=wx.TE_LEFT)
+        # self.connection_speed = wx.ComboBox()
+
+        box_sizer = wx.BoxSizer(orient=wx.VERTICAL)
+        flex_sizer = wx.FlexGridSizer(2, 4, 4)
+
+        # Server Address
+        flex_sizer.Add(wx.StaticText(self, label="Server Address"))
+        flex_sizer.Add(self.server_address, flagsExpand)
+
+        # Server Port
+        flex_sizer.Add(wx.StaticText(self, label="Server Port"))
+        flex_sizer.Add(self.server_port, flagsExpand)
+
+        # Connection Speed
+        # flex_sizer.Add(wx.StaticText(self, label="Connection Speed"))
+        # flex_sizer.Add(self.connection_speed, flag=wx.EXPAND | wx.HORIZONTAL)
+
+        box_sizer.Add(flex_sizer, flagsExpand)
+        box_sizer.Add(
+            self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL),
+            flag=wx.ALIGN_BOTTOM | wx.ALL | wx.EXPAND,
+            border=10,
+        )
+        self.SetSizer(box_sizer)
+        # self.SetSizerAndFit(box_sizer)
+
+
 class TestFrame(wx.Frame):
     def __init__(self, parent=None):
         super(TestFrame, self).__init__(parent)
+
         vbox = wx.BoxSizer(wx.VERTICAL)
-        button1 = wx.Button(self, label="Submit")
+        button1 = wx.Button(self, label="Connect")
         self.edit = wx.StaticText(
             self, style=wx.ALIGN_CENTRE_HORIZONTAL | wx.ST_NO_AUTORESIZE
         )
         self.edit_timer = wx.StaticText(
             self, style=wx.ALIGN_CENTRE_HORIZONTAL | wx.ST_NO_AUTORESIZE
         )
-        vbox.Add(button1, 2, wx.EXPAND | wx.ALL)
+        vbox.Add(button1, 2, wx.EXPAND | wx.ALL, border=10)
         vbox.AddStretchSpacer(1)
         vbox.Add(self.edit, 1, wx.EXPAND | wx.ALL)
         vbox.Add(self.edit_timer, 1, wx.EXPAND | wx.ALL)
         self.SetSizer(vbox)
         self.Layout()
+        self.CenterOnScreen()
+
+        StartCoroutine(self.async_callback, self)
+
         AsyncBind(wx.EVT_BUTTON, self.async_callback, button1)
-        StartCoroutine(self.update_clock, self)
+        # StartCoroutine(self.update_clock, self)
+        # StartCoroutine(self.run_file_server_in_background, self)
 
-    async def async_callback(self, event):
-        self.edit.SetLabel("Button clicked")
-        await asyncio.sleep(1)
-        self.edit.SetLabel("Working")
-        await asyncio.sleep(1)
-        self.edit.SetLabel("Completed")
+    async def async_callback(self, event=None):
+        # self.edit.SetLabel("Button clicked")
+        # await asyncio.sleep(1)
+        # self.edit.SetLabel("Working")
+        # await asyncio.sleep(1)
+        # self.edit.SetLabel("Completed")
 
-    async def update_clock(self):
-        while True:
-            self.edit_timer.SetLabel(time.strftime("%H:%M:%S"))
-            await asyncio.sleep(0.5)
+        self.Disable()
+
+        dialog = ConnectionDialog()
+        result = await AsyncShowDialog(dialog)
+
+        if result == wx.ID_OK:
+            print("was ok")
+
+        self.Enable()
+
+    # async def update_clock(self):
+    #    while True:
+    #        self.edit_timer.SetLabel(time.strftime("%H:%M:%S"))
+    #        await asyncio.sleep(0.5)
 
     async def run_file_server_in_background(self):
         server_task = asyncio.create_task(spawn_file_server(1234))
@@ -145,6 +206,7 @@ if __name__ == "__main__":
     app = WxAsyncApp()
     frame = TestFrame()
     frame.Show()
+    frame.Bind(wx.EVT_CLOSE, lambda event: app.ExitMainLoop())
     app.SetTopWindow(frame)
 
     loop = get_event_loop()
