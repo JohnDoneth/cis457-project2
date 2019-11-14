@@ -1,16 +1,18 @@
 #!/bin/python
 
-from client.gui import ClientGUI
-
+import wx
 import common
 import asyncio
 import argparse
 import os
 import base64
+import time
 
 from common import ConnectionSpeed, Event
 from asyncio import StreamReader, StreamWriter
 from typing import Dict
+from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
+from asyncio.events import get_event_loop
 
 
 async def handle_incoming(reader: StreamReader, writer: StreamWriter):
@@ -98,46 +100,52 @@ def parse_args():
     return parser.parse_args()
 
 
-async def main(pipe):
-    args = parse_args()
+class TestFrame(wx.Frame):
+    def __init__(self, parent=None):
+        super(TestFrame, self).__init__(parent)
+        vbox = wx.BoxSizer(wx.VERTICAL)
+        button1 = wx.Button(self, label="Submit")
+        self.edit = wx.StaticText(
+            self, style=wx.ALIGN_CENTRE_HORIZONTAL | wx.ST_NO_AUTORESIZE
+        )
+        self.edit_timer = wx.StaticText(
+            self, style=wx.ALIGN_CENTRE_HORIZONTAL | wx.ST_NO_AUTORESIZE
+        )
+        vbox.Add(button1, 2, wx.EXPAND | wx.ALL)
+        vbox.AddStretchSpacer(1)
+        vbox.Add(self.edit, 1, wx.EXPAND | wx.ALL)
+        vbox.Add(self.edit_timer, 1, wx.EXPAND | wx.ALL)
+        self.SetSizer(vbox)
+        self.Layout()
+        AsyncBind(wx.EVT_BUTTON, self.async_callback, button1)
+        StartCoroutine(self.update_clock, self)
 
-    server_task = asyncio.create_task(spawn_file_server(args.port))
+    async def async_callback(self, event):
+        self.edit.SetLabel("Button clicked")
+        await asyncio.sleep(1)
+        self.edit.SetLabel("Working")
+        await asyncio.sleep(1)
+        self.edit.SetLabel("Completed")
 
-    reader, writer = await connect("127.0.0.1", 12345, local_port=args.port)
+    async def update_clock(self):
+        while True:
+            self.edit_timer.SetLabel(time.strftime("%H:%M:%S"))
+            await asyncio.sleep(0.5)
 
-    # gui = ClientGUI()
+    async def run_file_server_in_background(self):
+        server_task = asyncio.create_task(spawn_file_server(1234))
 
-    # asyncio.get_running_loop().run_forever()
-
-    while True:
-        if pipe.poll():
-            event = pipe.recv()
-            print(event)
-
-            if event == Event.QUIT:
-                break
-        else:
-            await asyncio.sleep(0.1)
-
-
-from multiprocessing import Process, Pipe
-
-
-def f(conn):
-    # conn.send([42, None, 'hello'])
-    # conn.close()
-    client = ClientGUI(conn)
+    async def connect_to_server(self):
+        reader, writer = await connect("127.0.0.1", 12345, local_port=args.port)
 
 
 if __name__ == "__main__":
+    args = parse_args()
 
-    parent_conn, child_conn = Pipe()
-    p = Process(target=f, args=(child_conn,))
-    p.start()
-    # print(parent_conn.recv())  # prints "[42, None, 'hello']"
-    # p.join()
+    app = WxAsyncApp()
+    frame = TestFrame()
+    frame.Show()
+    app.SetTopWindow(frame)
 
-    # asyncio.get_event_loop().run_forever()
-    asyncio.run(main(parent_conn))
-
-    # client = ClientGUI()
+    loop = get_event_loop()
+    loop.run_until_complete(app.MainLoop())
