@@ -170,44 +170,68 @@ class ConnectionDialog(wx.Dialog):
 class TestFrame(wx.Frame):
 
     server_connection = None
-
     connect_button = None
+    disconnect_button = None
+    search_input = None
+    search_button = None
 
     def __init__(self, parent=None):
         super(TestFrame, self).__init__(parent)
+        self.SetTitle("GV NAP")
 
         vbox = wx.BoxSizer(wx.VERTICAL)
         self.connect_button = wx.Button(self, label="Connect")
+        self.disconnect_button = wx.Button(self, label="Disconnect")
+
         self.edit = wx.StaticText(self, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE)
         self.edit_timer = wx.StaticText(
             self, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE
         )
         vbox.Add(self.connect_button, 2, wx.EXPAND | wx.ALL, border=10)
-        vbox.AddStretchSpacer(1)
-        vbox.Add(self.edit, 1, wx.EXPAND | wx.ALL)
-        vbox.Add(self.edit_timer, 1, wx.EXPAND | wx.ALL)
+        vbox.Add(self.disconnect_button, 2, wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(wx.StaticLine(self), 0, wx.EXPAND | wx.ALL, border=10)
+
+        # Search
+        self.search_input = wx.TextCtrl(self, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER, value="")
+        self.search_button = wx.Button(self, label="Search")
+
+        AsyncBind(wx.EVT_TEXT_ENTER, self.send_search_request, self.search_input)
+        self.search_button.Bind(wx.EVT_BUTTON, lambda x: print("search"))
+        
+
+        H1 = wx.BoxSizer(wx.HORIZONTAL)
+        H1.Add(wx.StaticText(self, label="Search: "), 2, wx.EXPAND | wx.ALL, border=10)
+        H1.Add(self.search_input, 2, wx.EXPAND | wx.ALL, border=10)
+        H1.Add(self.search_button, 2, wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(H1, 1, wx.EXPAND | wx.ALL)
+
         self.SetSizer(vbox)
         self.Layout()
         self.CenterOnScreen()
 
         self.update_button()
-        # StartCoroutine(self.update_clock, self)
-        # StartCoroutine(self.run_file_server_in_background, self)
+        StartCoroutine(self.run_file_server_in_background, self)
+
+        AsyncBind(wx.EVT_BUTTON, self.connect, self.connect_button)
+        AsyncBind(wx.EVT_BUTTON, self.disconnect, self.disconnect_button)
+
+    async def send_search_request(self, event):
+        print("sending search request, async")
 
     def update_button(self):
-        # self.Unbind(wx.EVT_BUTTON)
-
-        print(self.connect_button.Unbind(wx.EVT_BUTTON))
-
         if self.server_connection == None:
-            self.connect_button.SetLabel("Connect")
-            AsyncBind(wx.EVT_BUTTON, self.connect, self.connect_button)
+            self.connect_button.Enable()
+            self.disconnect_button.Disable()
         else:
-            self.connect_button.SetLabel("Disconnect")
-            AsyncBind(wx.EVT_BUTTON, self.disconnect, self.connect_button)
+            self.connect_button.Disable()
+            self.disconnect_button.Enable()
+            
 
     async def disconnect(self, event=None):
         print("disconnecting")
+        (_, writer) = self.server_connection
+        writer.close()
+        await writer.wait_closed()
         self.server_connection = None
         self.update_button()
         pass
