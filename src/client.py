@@ -109,55 +109,80 @@ class ConnectionDialog(wx.Dialog):
     def IsModal(self):
         return True
 
+    def get_values(self):
+        return dict(
+            address=self.server_address.GetValue(),
+            port=self.server_port.GetValue()
+            # connection_speed=dial
+        )
+
     def __init__(self, parent=None):
-        super(ConnectionDialog, self).__init__(parent)
+        super(ConnectionDialog, self).__init__(parent, style=wx.RESIZE_BORDER)
         self.SetTitle("Connect")
 
-        flagsExpand = wx.SizerFlags(1)
-        flagsExpand.Expand().Border(wx.ALL, 10)
+        textMarginTop = wx.SizerFlags(0).Border(wx.TOP | wx.RIGHT, 2)
 
-        self.server_address = wx.TextCtrl(self, style=wx.TE_LEFT)
-        self.server_port = wx.TextCtrl(self, style=wx.TE_LEFT)
+        flagsExpand = wx.SizerFlags(1)
+        flagsExpand.Expand()
+        flagsExpand.Align(wx.ALIGN_CENTER)
+
+        self.server_address = wx.TextCtrl(self, style=wx.TE_LEFT, value="127.0.0.1")
+        self.server_port = wx.TextCtrl(self, style=wx.TE_LEFT, value="1234")
+
         # self.connection_speed = wx.ComboBox()
 
         box_sizer = wx.BoxSizer(orient=wx.VERTICAL)
         flex_sizer = wx.FlexGridSizer(2, 4, 4)
+        flex_sizer.AddGrowableCol(1)
 
         # Server Address
-        flex_sizer.Add(wx.StaticText(self, label="Server Address"))
+        flex_sizer.Add(
+            wx.StaticText(
+                self, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE, label="Server Address"
+            ),
+            textMarginTop,
+        )
         flex_sizer.Add(self.server_address, flagsExpand)
 
         # Server Port
-        flex_sizer.Add(wx.StaticText(self, label="Server Port"))
+        flex_sizer.Add(
+            wx.StaticText(
+                self, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE, label="Server Port"
+            ),
+            textMarginTop,
+        )
         flex_sizer.Add(self.server_port, flagsExpand)
 
         # Connection Speed
         # flex_sizer.Add(wx.StaticText(self, label="Connection Speed"))
         # flex_sizer.Add(self.connection_speed, flag=wx.EXPAND | wx.HORIZONTAL)
 
-        box_sizer.Add(flex_sizer, flagsExpand)
+        box_sizer.Add(flex_sizer, wx.SizerFlags(1).Expand().Border(wx.ALL, 10))
         box_sizer.Add(
             self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL),
-            flag=wx.ALIGN_BOTTOM | wx.ALL | wx.EXPAND,
+            flag=wx.ALIGN_BOTTOM | wx.BOTTOM | wx.EXPAND,
             border=10,
         )
         self.SetSizer(box_sizer)
-        # self.SetSizerAndFit(box_sizer)
+        # self.SetSizeWH(400, 200)
 
 
 class TestFrame(wx.Frame):
+
+    server_connection = None
+
+    connect_button = None
+
     def __init__(self, parent=None):
         super(TestFrame, self).__init__(parent)
 
         vbox = wx.BoxSizer(wx.VERTICAL)
-        button1 = wx.Button(self, label="Connect")
-        self.edit = wx.StaticText(
-            self, style=wx.ALIGN_CENTRE_HORIZONTAL | wx.ST_NO_AUTORESIZE
-        )
+        self.connect_button = wx.Button(self, label="Connect")
+        self.edit = wx.StaticText(self, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE)
         self.edit_timer = wx.StaticText(
-            self, style=wx.ALIGN_CENTRE_HORIZONTAL | wx.ST_NO_AUTORESIZE
+            self, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE
         )
-        vbox.Add(button1, 2, wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(self.connect_button, 2, wx.EXPAND | wx.ALL, border=10)
         vbox.AddStretchSpacer(1)
         vbox.Add(self.edit, 1, wx.EXPAND | wx.ALL)
         vbox.Add(self.edit_timer, 1, wx.EXPAND | wx.ALL)
@@ -165,19 +190,29 @@ class TestFrame(wx.Frame):
         self.Layout()
         self.CenterOnScreen()
 
-        StartCoroutine(self.async_callback, self)
-
-        AsyncBind(wx.EVT_BUTTON, self.async_callback, button1)
+        self.update_button()
         # StartCoroutine(self.update_clock, self)
         # StartCoroutine(self.run_file_server_in_background, self)
 
-    async def async_callback(self, event=None):
-        # self.edit.SetLabel("Button clicked")
-        # await asyncio.sleep(1)
-        # self.edit.SetLabel("Working")
-        # await asyncio.sleep(1)
-        # self.edit.SetLabel("Completed")
+    def update_button(self):
+        # self.Unbind(wx.EVT_BUTTON)
 
+        print(self.connect_button.Unbind(wx.EVT_BUTTON))
+
+        if self.server_connection == None:
+            self.connect_button.SetLabel("Connect")
+            AsyncBind(wx.EVT_BUTTON, self.connect, self.connect_button)
+        else:
+            self.connect_button.SetLabel("Disconnect")
+            AsyncBind(wx.EVT_BUTTON, self.disconnect, self.connect_button)
+
+    async def disconnect(self, event=None):
+        print("disconnecting")
+        self.server_connection = None
+        self.update_button()
+        pass
+
+    async def connect(self, event=None):
         self.Disable()
 
         dialog = ConnectionDialog()
@@ -186,7 +221,15 @@ class TestFrame(wx.Frame):
         if result == wx.ID_OK:
             print("was ok")
 
+            values = dialog.get_values()
+            print(values)
+
+            await self.connect_to_server(values)
+
+            dialog.Destroy()
+
         self.Enable()
+        self.Raise()
 
     # async def update_clock(self):
     #    while True:
@@ -196,8 +239,14 @@ class TestFrame(wx.Frame):
     async def run_file_server_in_background(self):
         server_task = asyncio.create_task(spawn_file_server(1234))
 
-    async def connect_to_server(self):
-        reader, writer = await connect("127.0.0.1", 12345, local_port=args.port)
+    async def connect_to_server(self, values):
+        reader, writer = await connect(
+            values.get("address"), values.get("port"), local_port=args.port
+        )
+        print("connected successfully")
+
+        self.server_connection = (reader, writer)
+        self.update_button()
 
 
 if __name__ == "__main__":
