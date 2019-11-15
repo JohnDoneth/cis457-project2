@@ -166,6 +166,42 @@ class ConnectionDialog(wx.Dialog):
         self.SetSizer(box_sizer)
         # self.SetSizeWH(400, 200)
 
+import wx.grid
+
+def create_grid(parent):
+    # Create a wxGrid object
+    grid = wx.grid.Grid(parent, -1)
+
+    # Then we call CreateGrid to set the dimensions of the grid
+    # (100 rows and 10 columns in this example)
+    grid.CreateGrid(3, 3)
+
+    # We can set the sizes of individual rows and columns
+    # in pixels
+    #grid.SetRowSize(0, 60)
+    #grid.SetColSize(0, 120)
+
+    # And set grid cell contents as strings
+    grid.SetCellValue(0, 0, 'wxGrid is good')
+
+    # We can specify that some cells are read.only
+    #grid.SetCellValue(0, 3, 'This is read.only')
+    #grid.SetReadOnly(0, 3)
+
+    # Colours can be specified for grid cell contents
+    #grid.SetCellValue(3, 3, 'green on grey')
+    #grid.SetCellTextColour(3, 3, wx.GREEN)
+    #grid.SetCellBackgroundColour(3, 3, wx.LIGHT_GREY)
+
+    # We can specify the some cells will store numeric
+    # values rather than strings. Here we set grid column 5
+    # to hold floating point values displayed with width of 6
+    # and precision of 2
+    #grid.SetColFormatFloat(5, 6, 2)
+    #grid.SetCellValue(0, 6, '3.1415')
+
+    return grid
+
 
 class TestFrame(wx.Frame):
 
@@ -174,6 +210,9 @@ class TestFrame(wx.Frame):
     disconnect_button = None
     search_input = None
     search_button = None
+
+    ftp_input = None
+    ftp_button = None
 
     def __init__(self, parent=None):
         super(TestFrame, self).__init__(parent)
@@ -196,15 +235,34 @@ class TestFrame(wx.Frame):
         self.search_button = wx.Button(self, label="Search")
 
         AsyncBind(wx.EVT_TEXT_ENTER, self.send_search_request, self.search_input)
-        self.search_button.Bind(wx.EVT_BUTTON, lambda x: print("search"))
+        AsyncBind(wx.EVT_BUTTON, self.send_search_request, self.search_button)
         
 
         H1 = wx.BoxSizer(wx.HORIZONTAL)
-        H1.Add(wx.StaticText(self, label="Search: "), 2, wx.EXPAND | wx.ALL, border=10)
+        #H1.Add(wx.StaticText(self, label="Search: ", style=wx.ALIGN_CENTER), 2, wx.EXPAND | wx.ALL, border=10)
         H1.Add(self.search_input, 2, wx.EXPAND | wx.ALL, border=10)
         H1.Add(self.search_button, 2, wx.EXPAND | wx.ALL, border=10)
+        
         vbox.Add(H1, 1, wx.EXPAND | wx.ALL)
+        vbox.Add(create_grid(self), 2, wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(wx.StaticLine(self), 0, wx.EXPAND | wx.ALL, border=10)
 
+        # FTP 
+        self.ftp_input = wx.TextCtrl(self, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER, value="")
+        self.ftp_button = wx.Button(self, label="Submit Command")
+
+        AsyncBind(wx.EVT_TEXT_ENTER, self.send_ftp_request, self.ftp_input)
+        AsyncBind(wx.EVT_BUTTON, self.send_ftp_request, self.ftp_button)
+        
+
+        H2 = wx.BoxSizer(wx.HORIZONTAL)
+        #H1.Add(wx.StaticText(self, label="Search: ", style=wx.ALIGN_CENTER), 2, wx.EXPAND | wx.ALL, border=10)
+        H2.Add(self.ftp_input, 2, wx.EXPAND | wx.ALL, border=10)
+        H2.Add(self.ftp_button, 2, wx.EXPAND | wx.ALL, border=10)
+        
+        vbox.Add(H2, 1, wx.EXPAND | wx.ALL)
+
+        # Lay it all out
         self.SetSizer(vbox)
         self.Layout()
         self.CenterOnScreen()
@@ -216,7 +274,12 @@ class TestFrame(wx.Frame):
         AsyncBind(wx.EVT_BUTTON, self.disconnect, self.disconnect_button)
 
     async def send_search_request(self, event):
-        print("sending search request, async")
+        query = self.search_input.GetValue()
+        print(f"sending search request, {query}")
+
+    async def send_ftp_request(self, event):
+        query = self.ftp_input.GetValue()
+        print(f"sending ftp request, {query}")
 
     def update_button(self):
         if self.server_connection == None:
