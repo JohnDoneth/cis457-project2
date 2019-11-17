@@ -117,7 +117,7 @@ class ConnectionDialog(wx.Dialog):
         )
 
     def __init__(self, parent=None):
-        super(ConnectionDialog, self).__init__(parent, style=wx.RESIZE_BORDER)
+        super(ConnectionDialog, self).__init__(parent)
         self.SetTitle("Connect")
 
         textMarginTop = wx.SizerFlags(0).Border(wx.TOP | wx.RIGHT, 2)
@@ -205,6 +205,8 @@ def create_grid(parent):
 
 class TestFrame(wx.Frame):
 
+    panel = None
+
     server_connection = None
     connect_button = None
     disconnect_button = None
@@ -218,21 +220,25 @@ class TestFrame(wx.Frame):
         super(TestFrame, self).__init__(parent)
         self.SetTitle("GV NAP")
 
-        vbox = wx.BoxSizer(wx.VERTICAL)
-        self.connect_button = wx.Button(self, label="Connect")
-        self.disconnect_button = wx.Button(self, label="Disconnect")
+        # Body sizer
+        self.panel = wx.Panel(self, -1)
 
-        self.edit = wx.StaticText(self, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE)
+        vbox = wx.BoxSizer(wx.VERTICAL)
+        self.connect_button = wx.Button(self.panel, label="Connect")
+
+        self.disconnect_button = wx.Button(self.panel, label="Disconnect")
+
+        self.edit = wx.StaticText(self.panel, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE)
         self.edit_timer = wx.StaticText(
             self, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE
         )
-        vbox.Add(self.connect_button, 2, wx.EXPAND | wx.ALL, border=10)
-        vbox.Add(self.disconnect_button, 2, wx.EXPAND | wx.ALL, border=10)
-        vbox.Add(wx.StaticLine(self), 0, wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(self.connect_button, 1, wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(self.disconnect_button, 1, wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.ALL, border=10)
 
         # Search
-        self.search_input = wx.TextCtrl(self, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER, value="")
-        self.search_button = wx.Button(self, label="Search")
+        self.search_input = wx.TextCtrl(self.panel, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER, value="")
+        self.search_button = wx.Button(self.panel, label="Search")
 
         AsyncBind(wx.EVT_TEXT_ENTER, self.send_search_request, self.search_input)
         AsyncBind(wx.EVT_BUTTON, self.send_search_request, self.search_button)
@@ -240,16 +246,16 @@ class TestFrame(wx.Frame):
 
         H1 = wx.BoxSizer(wx.HORIZONTAL)
         #H1.Add(wx.StaticText(self, label="Search: ", style=wx.ALIGN_CENTER), 2, wx.EXPAND | wx.ALL, border=10)
-        H1.Add(self.search_input, 2, wx.EXPAND | wx.ALL, border=10)
-        H1.Add(self.search_button, 2, wx.EXPAND | wx.ALL, border=10)
+        H1.Add(self.search_input, 1, wx.EXPAND | wx.ALL, border=10)
+        H1.Add(self.search_button, 1, wx.EXPAND | wx.ALL, border=10)
         
         vbox.Add(H1, 1, wx.EXPAND | wx.ALL)
-        vbox.Add(create_grid(self), 2, wx.EXPAND | wx.ALL, border=10)
-        vbox.Add(wx.StaticLine(self), 0, wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(create_grid(self.panel), 2, wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.ALL, border=10)
 
         # FTP 
-        self.ftp_input = wx.TextCtrl(self, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER, value="")
-        self.ftp_button = wx.Button(self, label="Submit Command")
+        self.ftp_input = wx.TextCtrl(self.panel, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER, value="")
+        self.ftp_button = wx.Button(self.panel, label="Submit Command")
 
         AsyncBind(wx.EVT_TEXT_ENTER, self.send_ftp_request, self.ftp_input)
         AsyncBind(wx.EVT_BUTTON, self.send_ftp_request, self.ftp_button)
@@ -262,9 +268,16 @@ class TestFrame(wx.Frame):
         
         vbox.Add(H2, 1, wx.EXPAND | wx.ALL)
 
+
+        
+
         # Lay it all out
-        self.SetSizer(vbox)
-        self.Layout()
+        self.panel.SetSizer(vbox)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.panel, 1, wx.EXPAND | wx.ALL)
+        self.SetSizerAndFit(sizer)
+        self.Show()
+
         self.CenterOnScreen()
 
         self.update_button()
@@ -327,13 +340,17 @@ class TestFrame(wx.Frame):
         server_task = asyncio.create_task(spawn_file_server(1234))
 
     async def connect_to_server(self, values):
-        reader, writer = await connect(
-            values.get("address"), values.get("port"), local_port=args.port
-        )
-        print("connected successfully")
 
-        self.server_connection = (reader, writer)
-        self.update_button()
+        try:
+            reader, writer = await connect(
+                values.get("address"), values.get("port"), local_port=args.port
+            )
+            print("connected successfully")
+
+            self.server_connection = (reader, writer)
+            self.update_button()
+        except Exception:
+            print("Failed to connect")
 
 
 if __name__ == "__main__":
