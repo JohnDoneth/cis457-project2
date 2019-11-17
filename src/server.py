@@ -15,7 +15,7 @@ from asyncio import StreamReader, StreamWriter
 
 from typing import Dict
 
-VALID_METHODS = ["CONNECT"]
+VALID_METHODS = ["CONNECT", "LIST"]
 
 
 class Client:
@@ -57,14 +57,29 @@ class Server:
 
             await common.send_json(writer, {"success": "connection successful"})
 
-        if method == "LIST":
-            await common.send_json(writer, self.clients)
+        elif method == "LIST":
+
+            files = []
+
+            for client in self.clients:
+                for file in client.files:
+                    files.append(
+                        {
+                            "filename": file["filename"],
+                            "hostname": client.hostname,
+                            "speed": client.speed,
+                        }
+                    )
+
+            await common.send_json(writer, files)
 
         else:
             # invalid method
             await common.send_json(
                 writer,
-                {"error": f"invalid method {method}, expected one of {VALID_METHODS}"},
+                {
+                    "error": f"invalid method '{method}', expected one of {VALID_METHODS}"
+                },
             )
 
     async def serve(self):
@@ -77,7 +92,6 @@ class Server:
             await server.serve_forever()
 
     async def handle_connect(self, reader: StreamReader, writer: StreamWriter):
-        # self.clients.append(Client(reader, writer))
 
         while True:
             request = await common.recv_json(reader)
@@ -87,7 +101,7 @@ class Server:
                 break
 
             print("-> Received Request:")
-            print(json.dumps(request, indent=4, sort_keys=True))
+            print(json.dumps(request, indent=4, sort_keys=False))
 
             if not request["method"]:
                 print("Invalid Request: missing method field.")

@@ -2,6 +2,16 @@
 
 Project 2 for CIS 457 - Data Communications at Grand Valley State University.
 
+## Mock Logo
+
+<p align="center">
+  <img src="./gvnapster.svg" width="40%">
+</p>
+
+## Screenshots
+
+![](./screenshot1.png)
+
 ## Installing Dependencies
 
 ```

@@ -60,24 +60,24 @@ async def spawn_file_server(local_port):
         await server.serve_forever()
 
 
-async def connect(remote_host, remote_port, local_port):
-    try:
-        reader, writer = await asyncio.open_connection("127.0.0.1", 12345)
-        return reader, writer
-    except ConnectionRefusedError:
-        print(
-            f"Failed to connect to {remote_host}:{remote_port}. Please ensure the remote IP address & port are valid and that the host is online."
-        )
-        raise ConnectionRefusedError
+async def connect(remote_host, remote_port, username, hostname, connection_speed, local_port):
+    
+    reader, writer = await asyncio.open_connection("127.0.0.1", 12345)
+    
+    #except ConnectionRefusedError:
+    #    print(
+    #        f"Failed to connect to {remote_host}:{remote_port}. Please ensure the remote IP address & port are valid and that the host is online."
+    #    )
+    #    raise ConnectionRefusedError
 
     await common.send_json(
         writer,
         {
             "method": "CONNECT",
-            "username": "john",
-            "hostname": "127.0.0.1",
+            "username": username,
+            "hostname": hostname,
             "port": local_port,
-            "speed": ConnectionSpeed.DIAL_UP,
+            "speed": connection_speed,
             "files": [{"filename": "meme.png"}],
         },
     )
@@ -90,6 +90,8 @@ async def connect(remote_host, remote_port, local_port):
         return
     else:
         print("Connected to remote server")
+
+    return reader, writer
 
 
 def parse_args():
@@ -166,41 +168,15 @@ class ConnectionDialog(wx.Dialog):
         self.SetSizer(box_sizer)
         # self.SetSizeWH(400, 200)
 
-import wx.grid
 
-def create_grid(parent):
+def create_list(parent):
     # Create a wxGrid object
-    grid = wx.grid.Grid(parent, -1)
+    listctrl = wx.ListCtrl(parent, -1)
 
-    # Then we call CreateGrid to set the dimensions of the grid
-    # (100 rows and 10 columns in this example)
-    grid.CreateGrid(3, 3)
+    listctrl.AppendColumn("Filename")
+    listctrl.AppendColumn("Hostname")
 
-    # We can set the sizes of individual rows and columns
-    # in pixels
-    #grid.SetRowSize(0, 60)
-    #grid.SetColSize(0, 120)
-
-    # And set grid cell contents as strings
-    grid.SetCellValue(0, 0, 'wxGrid is good')
-
-    # We can specify that some cells are read.only
-    #grid.SetCellValue(0, 3, 'This is read.only')
-    #grid.SetReadOnly(0, 3)
-
-    # Colours can be specified for grid cell contents
-    #grid.SetCellValue(3, 3, 'green on grey')
-    #grid.SetCellTextColour(3, 3, wx.GREEN)
-    #grid.SetCellBackgroundColour(3, 3, wx.LIGHT_GREY)
-
-    # We can specify the some cells will store numeric
-    # values rather than strings. Here we set grid column 5
-    # to hold floating point values displayed with width of 6
-    # and precision of 2
-    #grid.SetColFormatFloat(5, 6, 2)
-    #grid.SetCellValue(0, 6, '3.1415')
-
-    return grid
+    return listctrl
 
 
 class TestFrame(wx.Frame):
@@ -228,7 +204,9 @@ class TestFrame(wx.Frame):
 
         self.disconnect_button = wx.Button(self.panel, label="Disconnect")
 
-        self.edit = wx.StaticText(self.panel, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE)
+        self.edit = wx.StaticText(
+            self.panel, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE
+        )
         self.edit_timer = wx.StaticText(
             self, style=wx.ALIGN_RIGHT | wx.ST_NO_AUTORESIZE
         )
@@ -237,39 +215,49 @@ class TestFrame(wx.Frame):
         vbox.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.ALL, border=10)
 
         # Search
-        self.search_input = wx.TextCtrl(self.panel, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER, value="")
+        self.search_input = wx.TextCtrl(
+            self.panel, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER, value=""
+        )
         self.search_button = wx.Button(self.panel, label="Search")
 
         AsyncBind(wx.EVT_TEXT_ENTER, self.send_search_request, self.search_input)
         AsyncBind(wx.EVT_BUTTON, self.send_search_request, self.search_button)
-        
 
         H1 = wx.BoxSizer(wx.HORIZONTAL)
-        #H1.Add(wx.StaticText(self, label="Search: ", style=wx.ALIGN_CENTER), 2, wx.EXPAND | wx.ALL, border=10)
+        H1.Add(
+            wx.StaticText(
+                self.panel, label="Search: ", style=wx.ST_NO_AUTORESIZE | wx.ALIGN_RIGHT
+            ),
+            0,
+            wx.ALL | wx.ALIGN_CENTER_VERTICAL,
+            border=10,
+        )
         H1.Add(self.search_input, 1, wx.EXPAND | wx.ALL, border=10)
-        H1.Add(self.search_button, 1, wx.EXPAND | wx.ALL, border=10)
-        
+        H1.Add(self.search_button, 0, wx.EXPAND | wx.ALL, border=10)
+
         vbox.Add(H1, 1, wx.EXPAND | wx.ALL)
-        vbox.Add(create_grid(self.panel), 2, wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(create_list(self.panel), 2, wx.EXPAND | wx.ALL, border=10)
         vbox.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.ALL, border=10)
 
-        # FTP 
-        self.ftp_input = wx.TextCtrl(self.panel, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER, value="")
-        self.ftp_button = wx.Button(self.panel, label="Submit Command")
+        # FTP
+
+        ftp_sbox = wx.StaticBox(self.panel, -1, "FTP")
+        ftp_sboxsizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.ftp_input = wx.TextCtrl(
+            ftp_sbox, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER, value=""
+        )
+        self.ftp_button = wx.Button(ftp_sbox, label="Submit Command")
 
         AsyncBind(wx.EVT_TEXT_ENTER, self.send_ftp_request, self.ftp_input)
         AsyncBind(wx.EVT_BUTTON, self.send_ftp_request, self.ftp_button)
-        
 
-        H2 = wx.BoxSizer(wx.HORIZONTAL)
-        #H1.Add(wx.StaticText(self, label="Search: ", style=wx.ALIGN_CENTER), 2, wx.EXPAND | wx.ALL, border=10)
-        H2.Add(self.ftp_input, 2, wx.EXPAND | wx.ALL, border=10)
-        H2.Add(self.ftp_button, 2, wx.EXPAND | wx.ALL, border=10)
-        
-        vbox.Add(H2, 1, wx.EXPAND | wx.ALL)
+        # H2.Add(wx.StaticText(self.panel, label="Search: "), 2, wx.EXPAND | wx.ALL, border=10)
+        ftp_sboxsizer.Add(self.ftp_input, 1, wx.EXPAND | wx.ALL | wx.CENTER, border=5)
+        ftp_sboxsizer.Add(self.ftp_button, 0, wx.EXPAND | wx.ALL | wx.CENTER, border=5)
 
-
-        
+        ftp_sbox.SetSizer(ftp_sboxsizer)
+        vbox.Add(ftp_sbox, 1, wx.EXPAND | wx.ALL | wx.CENTER, border=15)
 
         # Lay it all out
         self.panel.SetSizer(vbox)
@@ -301,7 +289,6 @@ class TestFrame(wx.Frame):
         else:
             self.connect_button.Disable()
             self.disconnect_button.Enable()
-            
 
     async def disconnect(self, event=None):
         print("disconnecting")
@@ -353,14 +340,171 @@ class TestFrame(wx.Frame):
             print("Failed to connect")
 
 
+from client.gui import MyFrame
+
+
+class ErrorDialog(wx.Dialog):
+
+    message = ""
+
+    def __init__(self, message):
+        # begin wxGlade: ErrorDialog.__init__
+
+        wx.Dialog.__init__(self, None, style=wx.DEFAULT_DIALOG_STYLE)
+        self.SetTitle("Error")
+
+        self.message = message
+
+        self.__do_layout()
+        # end wxGlade
+
+    def __do_layout(self):
+        # begin wxGlade: ErrorDialog.__do_layout
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        label_8 = wx.StaticText(self, wx.ID_ANY, self.message)
+        sizer.Add(label_8, 0, wx.ALIGN_CENTER | wx.ALL, 20)
+
+       
+
+        sizer.Add(self.CreateButtonSizer(flags=wx.OK), 0, wx.ALIGN_RIGHT | wx.ALL, 20)
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+        self.Layout()
+        # end wxGlade
+        
+
+
+
+class MyApp(WxAsyncApp):
+
+    server_connection = None
+
+    def OnInit(self):
+        self.frame = MyFrame(None, wx.ID_ANY, "")
+        self.SetTopWindow(self.frame)
+        self.frame.Show()
+        self.frame.Bind(wx.EVT_CLOSE, lambda event: app.ExitMainLoop())
+
+        StartCoroutine(self.run_file_server_in_background, self)
+
+        AsyncBind(wx.EVT_BUTTON, self.OnConnect, self.frame.connect_button)
+        AsyncBind(wx.EVT_BUTTON, self.OnDisconnect, self.frame.disconnect_button)
+
+        AsyncBind(wx.EVT_BUTTON, self.GetAndDisplayFiles, self.frame.search_button)
+
+        self.update_gui()
+
+        return True
+
+
+    def update_gui(self):
+
+        connected = self.server_connection is not None
+
+        if_connected = [
+            (self.frame.connect_button, False),
+            (self.frame.disconnect_button, True),
+            (self.frame.search_input, True),
+            (self.frame.search_button, True),
+            (self.frame.ftp_input, True),
+            (self.frame.ftp_button, True),
+
+            # connection stuff
+            (self.frame.server_hostname, False),
+            (self.frame.server_port, False),
+            (self.frame.username, False),
+            (self.frame.hostname, False),
+            (self.frame.connection_speed, False),
+        ]
+
+        if connected:
+            for (widget, state) in if_connected:
+                if state:
+                    widget.Enable()
+                else:
+                    widget.Disable()
+
+        else:
+            for (widget, state) in if_connected:
+                if state:
+                    widget.Disable()
+                else:
+                    widget.Enable()
+
+
+    async def run_file_server_in_background(self):
+        server_task = asyncio.create_task(spawn_file_server(1234))
+
+
+    async def OnDisconnect(self, event):
+        print("disconnecting")
+        try:
+            (_, writer) = self.server_connection
+            writer.close()
+            await writer.wait_closed()
+        except ConnectionResetError:
+            pass
+        self.server_connection = None
+        self.update_gui()
+        
+
+    async def OnConnect(self, event):
+
+        self.frame.connect_button.Disable()
+
+        server_hostname = self.frame.server_hostname.GetValue()
+        server_port = self.frame.server_port.GetValue()
+        username = self.frame.username.GetValue()
+        hostname = self.frame.hostname.GetValue()
+        connection_speed = self.frame.connection_speed.GetValue()
+
+        print(server_hostname, server_port, username, hostname, connection_speed)
+
+        try:
+            reader, writer = await connect(
+                server_hostname, server_port, username, hostname, connection_speed, local_port=1234
+            )
+            print("connected successfully")
+
+            self.server_connection = (reader, writer)
+            #self.update_button()
+        except Exception:
+            print("Failed to connect")
+
+            dlg = ErrorDialog("Failed to connect, is the host online?")
+            await AsyncShowDialog(dlg)
+
+        self.update_gui()
+        await self.GetAndDisplayFiles(None)
+
+    
+    async def GetAndDisplayFiles(self, event):
+
+        # Get the files
+        (reader, writer) = self.server_connection
+
+        await common.send_json(writer, {
+            "method": "LIST",
+        })
+
+        response = await common.recv_json(reader)
+
+        # Update the ListCtrl
+        listctrl = self.frame.search_output
+        listctrl.DeleteAllItems()
+
+        for file in response:
+            filename = file["filename"]
+            hostname = file["hostname"]
+            speed = file["speed"]
+
+            listctrl.Append([filename, hostname, speed])
+
+
 if __name__ == "__main__":
     args = parse_args()
 
-    app = WxAsyncApp()
-    frame = TestFrame()
-    frame.Show()
-    frame.Bind(wx.EVT_CLOSE, lambda event: app.ExitMainLoop())
-    app.SetTopWindow(frame)
+    app = MyApp(0)
 
     loop = get_event_loop()
     loop.run_until_complete(app.MainLoop())
