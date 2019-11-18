@@ -186,7 +186,7 @@ class FTPClient:
 
         contents = response["content"]
 
-        return base64.b64decode(contents)
+        return base64.b64decode(contents).decode("utf-8")
 
     async def retrieve(self, filename):
         if self.writer is None:

@@ -78,7 +78,7 @@ class Server:
             await common.send_json(writer, files)
 
         elif method == "KEYWORD":
-            keyword = method["keyword"]
+            keyword = request["keyword"]
 
             files_to_search = []
 
@@ -104,8 +104,8 @@ class Server:
 
                 await ftpclient.connect(address, port)
                 contents = await ftpclient.retrieve_string(file["filename"])
-                if contents.contains(keyword) == False:
-                    files_to_search.remove(file)
+                if keyword in contents:
+                    files.append(file)
 
             await common.send_json(writer, files)
 
