@@ -1,1 +1,1 @@
-../../src/client.py --port 12346
+python ../../src/client.py --port 3333
