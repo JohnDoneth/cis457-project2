@@ -10,6 +10,7 @@ import threading
 import common
 import asyncio
 
+from ftp.ftp_client import FTPClient
 from common import Event
 from asyncio import StreamReader, StreamWriter
 
@@ -52,18 +53,17 @@ class Server:
             speed = request["speed"]
             files = request["files"]
 
-            print("Accepted new client")
+            print(f"Accepted new client with hostname: {hostname}")
             client = Client(username, hostname, speed, files)
             self.clients.append(client)
             await common.send_json(writer, {"success": "connection successful"})
             return client
 
         elif method == "LIST":
-
             files = []
 
             for c in self.clients:
-                if c.hostname != client.hostname:
+                if c.username != client.username:
                     for file in c.files:
                         files.append(
                             {
@@ -74,6 +74,38 @@ class Server:
                         )
 
             print(files)
+
+            await common.send_json(writer, files)
+
+        elif method == "KEYWORD":
+            keyword = method["keyword"]
+
+            files_to_search = []
+
+            for c in self.clients:
+                if c.username != client.username:
+                    for file in c.files:
+                        files_to_search.append(
+                            {
+                                "filename": file["filename"],
+                                "hostname": c.hostname,
+                                "speed": c.speed,
+                            }
+                        )
+
+            files = []
+
+            # get each file
+            for file in files_to_search:
+                hostname = file["hostname"]
+                address, port = hostname.split(":")
+
+                ftpclient = FTPClient()
+
+                await ftpclient.connect(address, port)
+                contents = await ftpclient.retrieve_string(file["filename"])
+                if contents.contains(keyword) == False:
+                    files_to_search.remove(file)
 
             await common.send_json(writer, files)
 

@@ -11,21 +11,24 @@ class FTPClient:
 
     output = None
 
-    def __init__(self, output):
+    def __init__(self, output=None):
         self.output = output
         pass
 
     def info(self, msg):
-        self.output.SetDefaultStyle(wx.TextAttr(wx.BLACK))
-        self.output.AppendText(f"{msg}\n")
+        if self.output:
+            self.output.SetDefaultStyle(wx.TextAttr(wx.BLACK))
+            self.output.AppendText(f"{msg}\n")
 
     def error(self, msg):
-        self.output.SetDefaultStyle(wx.TextAttr(wx.RED))
-        self.output.AppendText(f"{msg}\n")
+        if self.output:
+            self.output.SetDefaultStyle(wx.TextAttr(wx.RED))
+            self.output.AppendText(f"{msg}\n")
 
     def success(self, msg):
-        self.output.SetDefaultStyle(wx.TextAttr(wx.Colour(0, 100, 0)))
-        self.output.AppendText(f"{msg}\n")
+        if self.output:
+            self.output.SetDefaultStyle(wx.TextAttr(wx.Colour(0, 100, 0)))
+            self.output.AppendText(f"{msg}\n")
 
     def column_print(self, columns):
         col_width = max(len(word) for row in columns for word in row) + 2  # padding
@@ -163,6 +166,27 @@ class FTPClient:
 
             except BrokenPipeError:
                 self.require_connection()
+
+    async def retrieve_string(self, filename):
+        if self.writer is None:
+            self.require_connection()
+            return
+
+        await self.send_json(
+            {"method": "RETRIEVE", "filename": filename,}
+        )
+
+        response = await self.recv_json()
+
+        error = response.get("error", None)
+
+        if error:
+            self.error(f"Failed to retrieve {filename}: {error}")
+            return
+
+        contents = response["content"]
+
+        return base64.b64decode(contents)
 
     async def retrieve(self, filename):
         if self.writer is None:

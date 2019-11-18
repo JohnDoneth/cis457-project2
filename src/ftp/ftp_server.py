@@ -16,11 +16,6 @@ def filter_files(path):
 
 
 class FTPServer:
-    async def handle_incoming(self, reader: StreamReader, writer: StreamWriter):
-        request = await common.recv_json(reader)
-
-        await self.handle_request(request, reader, writer)
-
     async def handle_file_request(
         self, request: Dict, reader: StreamReader, writer: StreamWriter
     ):
@@ -41,7 +36,7 @@ class FTPServer:
 
     async def run_forever(self, local_port):
         server = await asyncio.start_server(
-            self.handle_incoming, "127.0.0.1", local_port
+            self.handle_request, "127.0.0.1", local_port
         )
         addr = server.sockets[0].getsockname()
 
@@ -51,11 +46,11 @@ class FTPServer:
         async with server:
             await server.serve_forever()
 
-    async def handle_request(
-        self, request: Dict, reader: StreamReader, writer: StreamWriter
-    ):
+    async def handle_request(self, reader: StreamReader, writer: StreamWriter):
         while True:
             request = await common.recv_json(reader)
+
+            print(request)
 
             if request is None:
                 break
@@ -76,8 +71,6 @@ class FTPServer:
                 files = filter(filter_files, files)
 
                 files = list(files)
-
-                print("sending files")
 
                 await common.send_json(writer, {"files": files,})
 
