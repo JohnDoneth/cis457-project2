@@ -43,8 +43,8 @@ class Server:
         asyncio.run(self.serve())
 
     async def handle_request(
-        self, method: str, request, reader: StreamReader, writer: StreamWriter
-    ):
+        self, method: str, request, client, reader: StreamReader, writer: StreamWriter
+    ) -> Client:
 
         if method == "CONNECT":
             username = request["username"]
@@ -53,23 +53,27 @@ class Server:
             files = request["files"]
 
             print("Accepted new client")
-            self.clients.append(Client(username, hostname, speed, files))
-
+            client = Client(username, hostname, speed, files)
+            self.clients.append(client)
             await common.send_json(writer, {"success": "connection successful"})
+            return client
 
         elif method == "LIST":
 
             files = []
 
-            for client in self.clients:
-                for file in client.files:
-                    files.append(
-                        {
-                            "filename": file["filename"],
-                            "hostname": client.hostname,
-                            "speed": client.speed,
-                        }
-                    )
+            for c in self.clients:
+                if c.hostname != client.hostname:
+                    for file in c.files:
+                        files.append(
+                            {
+                                "filename": file["filename"],
+                                "hostname": c.hostname,
+                                "speed": c.speed,
+                            }
+                        )
+
+            print(files)
 
             await common.send_json(writer, files)
 
@@ -93,14 +97,21 @@ class Server:
 
     async def handle_connect(self, reader: StreamReader, writer: StreamWriter):
 
+        client = None
+
         while True:
             request = await common.recv_json(reader)
 
             if request is None:
-                print("a client has disconnected")
+                print(f"Client has disconnected: {client.hostname}")
+                self.clients.remove(client)
                 break
 
-            print("-> Received Request:")
+            if client is None:
+                print("-> Received Request:")
+            else:
+                print(f"-> Received Request from {client.hostname}:")
+
             print(json.dumps(request, indent=4, sort_keys=False))
 
             if not request["method"]:
@@ -109,7 +120,12 @@ class Server:
                     writer, {"error": "invalid request: missing method field"}
                 )
             else:
-                await self.handle_request(request["method"], request, reader, writer)
+                etc = await self.handle_request(
+                    request["method"], request, client, reader, writer
+                )
+
+                if etc is not None:
+                    client = etc
 
 
 def filter_files(path):

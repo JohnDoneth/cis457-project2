@@ -14,51 +14,8 @@ from typing import Dict
 from wxasync import AsyncBind, WxAsyncApp, StartCoroutine, AsyncShowDialog
 from asyncio.events import get_event_loop
 
-
-async def handle_incoming(reader: StreamReader, writer: StreamWriter):
-    request = await common.recv_json(reader)
-
-    handle_request(request, reader, writer)
-
-
-async def handle_request(request: Dict, reader: StreamReader, writer: StreamWriter):
-    print(request)
-
-    if request["method"].upper().startswith("RETRIEVE"):
-        handle_file_request(request, reader, writer)
-
-    pass
-
-
-async def handle_file_request(
-    request: Dict, reader: StreamReader, writer: StreamWriter
-):
-
-    filename = request["filename"]
-
-    if not os.path.exists(filename):
-        common.send_json(writer, {"error": "file does not exist"})
-        return
-
-    with open(filename, "rb") as infile:
-        contents = infile.read()
-
-        # base64 encode the binary file
-        contents = base64.b64encode(contents).decode("utf-8")
-
-        common.send_json(writer, {"filename": filename, "content": contents})
-
-
-async def spawn_file_server(local_port):
-    server = await asyncio.start_server(handle_incoming, "127.0.0.1", local_port)
-    addr = server.sockets[0].getsockname()
-
-    print("Server started")
-    print(f"Waiting for file requests on {addr}")
-
-    async with server:
-        await server.serve_forever()
-
+from ftp.ftp_client import FTPClient
+from ftp.ftp_server import FTPServer
 
 async def connect(remote_host, remote_port, username, hostname, connection_speed, local_port):
     
@@ -379,11 +336,15 @@ class MyApp(WxAsyncApp):
 
     server_connection = None
 
+    ftp_client = None
+
     def OnInit(self):
         self.frame = MyFrame(None, wx.ID_ANY, "")
         self.SetTopWindow(self.frame)
         self.frame.Show()
         self.frame.Bind(wx.EVT_CLOSE, lambda event: app.ExitMainLoop())
+
+        self.ftp_client = FTPClient(self.frame.ftp_output)
 
         StartCoroutine(self.run_file_server_in_background, self)
 
@@ -391,6 +352,10 @@ class MyApp(WxAsyncApp):
         AsyncBind(wx.EVT_BUTTON, self.OnDisconnect, self.frame.disconnect_button)
 
         AsyncBind(wx.EVT_BUTTON, self.GetAndDisplayFiles, self.frame.search_button)
+        AsyncBind(wx.EVT_TEXT_ENTER, self.GetAndDisplayFiles, self.frame.search_input)
+        
+        AsyncBind(wx.EVT_BUTTON, self.OnFTPCommand, self.frame.ftp_button)
+        AsyncBind(wx.EVT_TEXT_ENTER, self.OnFTPCommand, self.frame.ftp_input)
 
         self.update_gui()
 
@@ -406,8 +371,8 @@ class MyApp(WxAsyncApp):
             (self.frame.disconnect_button, True),
             (self.frame.search_input, True),
             (self.frame.search_button, True),
-            (self.frame.ftp_input, True),
-            (self.frame.ftp_button, True),
+            #(self.frame.ftp_input, True),
+            #(self.frame.ftp_button, True),
 
             # connection stuff
             (self.frame.server_hostname, False),
@@ -433,7 +398,9 @@ class MyApp(WxAsyncApp):
 
 
     async def run_file_server_in_background(self):
-        server_task = asyncio.create_task(spawn_file_server(1234))
+        server = FTPServer()
+
+        server_task = asyncio.create_task(server.run_forever(1234))
 
 
     async def OnDisconnect(self, event):
@@ -499,6 +466,14 @@ class MyApp(WxAsyncApp):
             speed = file["speed"]
 
             listctrl.Append([filename, hostname, speed])
+
+
+    async def OnFTPCommand(self, event):
+
+        cmd = self.frame.ftp_input.GetValue()
+        self.frame.ftp_input.SetValue("")
+
+        await self.ftp_client.try_command(cmd)
 
 
 if __name__ == "__main__":

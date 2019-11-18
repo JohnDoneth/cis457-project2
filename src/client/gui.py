@@ -41,7 +41,10 @@ class MyFrame(wx.Frame):
         )
         self.ftp_button = wx.Button(self.panel_1, wx.ID_ANY, "Execute")
         self.ftp_output = wx.TextCtrl(
-            self.panel_1, wx.ID_ANY, "", style=wx.TE_MULTILINE | wx.TE_READONLY
+            self.panel_1,
+            wx.ID_ANY,
+            "",
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH,
         )
 
         self.__set_properties()
@@ -64,6 +67,16 @@ class MyFrame(wx.Frame):
         self.search_output.AppendColumn("Speed", format=wx.LIST_FORMAT_LEFT, width=-1)
         self.search_progress.Enable(False)
         self.search_progress.Hide()
+        self.ftp_output.SetFont(
+            wx.Font(
+                9,
+                wx.FONTFAMILY_MODERN,
+                wx.FONTSTYLE_NORMAL,
+                wx.FONTWEIGHT_NORMAL,
+                0,
+                "",
+            )
+        )
         # end wxGlade
 
     def __do_layout(self):
