@@ -254,14 +254,12 @@ class MyApp(WxAsyncApp):
         listctrl = self.frame.search_output
 
         for col in range(0, listctrl.GetColumnCount()):
-            listctrl.SetColumnWidth(col, wx.LIST_AUTOSIZE_USEHEADER )
+            listctrl.SetColumnWidth(col, wx.LIST_AUTOSIZE_USEHEADER)
             wh = listctrl.GetColumnWidth(col)
-            listctrl.SetColumnWidth(col, wx.LIST_AUTOSIZE )
+            listctrl.SetColumnWidth(col, wx.LIST_AUTOSIZE)
             wc = listctrl.GetColumnWidth(col)
-            if (wh > wc):
-                listctrl.SetColumnWidth(col, wx.LIST_AUTOSIZE_USEHEADER )
-        
-    
+            if wh > wc:
+                listctrl.SetColumnWidth(col, wx.LIST_AUTOSIZE_USEHEADER)
 
     async def OnFTPCommand(self, event):
 
